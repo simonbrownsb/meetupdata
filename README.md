@@ -62,9 +62,8 @@ Entities
   - **attendance**: Get information about attendance of an individual event
     for a group. You need to provide the group name and also its event_id.
 
-  - **activity**: Get information about your own activity. You don't
-    provide any group names; it uses all of the groups that you are
-    a member of.
+  - **activity**: Get information about activity on all of the groups that
+    you are a member of. You don't give it any parameters.
 
 
 Access Token
