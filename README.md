@@ -39,16 +39,16 @@ module, which you need to have installed:
 Options
 -------
 
-    **-h**: Show detailed help.
+  - **-h**: Show detailed help.
 
-    **--raw**: Save results as raw nested JSON. By default the data is
+  - **--raw**: Save results as raw nested JSON. By default the data is
                flattened to make it more suitable to use as an analytical
                dataframe.
 
-    **--identifiable**: Include identifiable data (i.e. people's full names).
+  - **--identifiable**: Include identifiable data (i.e. people's full names).
                         By default, names are removed.
 
-    **--firtname**: Include people's first names, but remove any surnames.
+  - **--firtname**: Include people's first names, but remove any surnames.
 
 
 Entities
