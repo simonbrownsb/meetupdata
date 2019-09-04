@@ -48,7 +48,7 @@ Options
   - **--identifiable**: Include identifiable data (i.e. people's full names).
                         By default, names are removed.
 
-  - **--firtname**: Include people's first names, but remove any surnames.
+  - **--firstname**: Include people's first names, but remove any surnames.
 
 
 Entities
