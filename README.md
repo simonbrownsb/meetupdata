@@ -83,7 +83,7 @@ So the alternative is to do it manually yourself:
       OAuth Consumer, with redirect_uri as https://www.google.com.
    2. Go to the site:
         https://secure.meetup.com/oauth2/authorize?client_id=CONSUMER_KEY&response_type=token&redirect_uri=https://www.google.com
-      in your browser (replacing CONSUMER_KEY with your own consumer key.
+      in your browser (replacing CONSUMER_KEY with your own consumer key).
    3. Grant it access to your meetup.com account.
    4. It will redirect you to https://www.google.com, with an access token
       embedded within the URL. It's not using google.com for anything, it's
