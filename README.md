@@ -5,11 +5,15 @@ Summary
 
 This utility fetches data from the meetup.com API.
 
-It can be used to fetch information about the following entities:\n'
+It can be used to fetch information about the following entities:
   - members
   - activity
   - events
   - attendance
+
+Usage:
+
+    python meetup_data.py ACCESS_TOKEN ENTITY [PARAMS]
 
 It writes output to standard output, in JSON format. You should run it with
 output redirected to a file.
@@ -30,6 +34,21 @@ script that you run directly. It has a single dependency, the `requests`
 module, which you need to have installed:
 
     python -m pip install requests
+
+
+Options
+-------
+
+    **-h**: Show detailed help.
+
+    **--raw**: Save results as raw nested JSON. By default the data is
+               flattened to make it more suitable to use as an analytical
+               dataframe.
+
+    **--identifiable**: Include identifiable data (i.e. people's full names).
+                        By default, names are removed.
+
+    **--firtname**: Include people's first names, but remove any surnames.
 
 
 Entities
