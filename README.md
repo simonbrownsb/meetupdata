@@ -13,7 +13,10 @@ It can be used to fetch information about the following entities:
 
 Usage:
 
-    python meetup_data.py ACCESS_TOKEN ENTITY [PARAMS]
+    python meetup_data.py [FLAGS] ACCESS_TOKEN ENTITY [PARAMS]
+
+The PARAMS depend on what ENTITY is being used.  See the Entities section
+below (or run it with -h to get full help description).
 
 It writes output to standard output, in JSON format. You should run it with
 output redirected to a file.
@@ -22,9 +25,7 @@ For example:
 
     python meetup_data.py ACCESS_TOKEN members PyData-Edinburgh > PyData-Edinburgh-members.json
 
-
-This is licensed as free to use by anyone, without warrantee.
-
+Works with Python 2.7 and 3.7.
 
 Installation
 ------------
@@ -34,6 +35,12 @@ script that you run directly. It has a single dependency, the `requests`
 module, which you need to have installed:
 
     python -m pip install requests
+
+
+License
+-------
+
+This is licensed as free to use by anyone, without warrantee.
 
 
 Options
@@ -74,10 +81,13 @@ To get an access token, the easiest way is to go to the site:
 in your browser, then grant it access to your meetup.com account when it asks
 you to. It will display your access token.
 
+This app uses the Meetup OAuth2 Implicit Flow to authorize against
+your own meetup.com account to allocate, directly, an access token.
+
 However, you might not want to do that (if you don\'t trust what that app
 is doing to fetch a token).
 
-So the alternative is to do it manually yourself:
+So the alternative is to run the same Implicit Flow manually yourself:
 
    1. Login to https://www.meetup.com/meetup_api/, and create your own
       OAuth Consumer, with redirect_uri as https://www.google.com.
@@ -92,4 +102,13 @@ So the alternative is to do it manually yourself:
       property.
 
 An access token will usually expire after an hour.
+
+
+Heroku App
+----------
+
+The sources for the heroku app (deployed at meetupdata.herokuapp.com) are
+included as part of this repository. They contain hardwired details for an
+OAuth Consumer with a redirect pointing at https://meetuptoken.herokuapp.com,
+so, unless modified,  can only be used for that site.
 
