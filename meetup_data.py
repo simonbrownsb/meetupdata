@@ -7,6 +7,7 @@
 from __future__ import print_function
 
 import argparse
+import csv
 import json
 import sys
 from collections import OrderedDict
@@ -87,6 +88,8 @@ class MeetupAPI:
 
                 if 'meta' in doc and 'next' in doc['meta']:
                     next_url = doc['meta']['next']
+                else:
+                    next_url = None
                 if self.stop_after_one or not next_url:
                     return items
             else:
@@ -121,7 +124,7 @@ class MeetupAPI:
                 else:
                     # recurse
                     for k, v in item.items():
-                        self.anonymise(v, pi_fields, level)
+                        MeetupAPI.anonymise(v, pi_fields, level)
 
     def get_members(self, params):
         """
@@ -145,9 +148,9 @@ class MeetupAPI:
             sys.exit(1)
         return self.get_json('/activity', {}, pi_fields, 'updated')
 
-    def get_events(self, params):
+    def get_events(self, params, has_ended=True):
         """
-        get info about all events for a specified group
+        get info about all events (past or future) for a specified group
         """
         pi_fields = []
         if not params:
@@ -155,7 +158,8 @@ class MeetupAPI:
                   file=sys.stderr)
             sys.exit(1)
         endpoint = '/%s/events' % params[0]
-        return self.get_json(endpoint, {}, pi_fields, 'updated')
+        return self.get_json(endpoint, {'has_ended': self.js_bool(has_ended)},
+                             pi_fields, 'updated')
 
     def get_attendance(self, params):
         """
@@ -170,26 +174,11 @@ class MeetupAPI:
         return self.get_json(endpoint, {}, pi_fields, 'time')
 
     @staticmethod
-    def flatten(row, expand):
+    def js_bool(val):
         """
-        Convert from arbitrarily-nested data structure to a flattened
-        form, more suitable for using as an analytical dataframe.
+        Get javascript string representation of a bool value for use in URL
         """
-        result = OrderedDict()
-        for k, v in row.items():
-            if type(v) is dict:
-                for k2, v2 in v.items():
-                    result[k + '_' + k2] = v2
-            elif expand and type(v) in (list, tuple):
-                for i, item in enumerate(v):
-                    if type(item) is dict:
-                        for (k2, v2) in item.items():
-                            result[k + '_' + str(i) + '_' + k2] = v2
-                    else:
-                        result[k + '_' + str(i)] = item
-            else:
-                result[k] = v
-        return result
+        return 'true' if val else 'false'
 
 
 def main(argv):
@@ -198,10 +187,11 @@ def main(argv):
         '----------------------------------------------------------------\n'
         'This utility fetches data from the meetup.com API.\n'
         'It can be used to fetch information about the following entities:\n'
-        '   - members\n'
-        '   - activity\n'
-        '   - events\n'
-        '   - attendance\n\n'
+        '   - members (of a group)\n'
+        '   - past-events (of a group)\n'
+        '   - future-events (of a group)\n'
+        '   - attendance (of a single past event for a group)\n'
+        '   - activity (of all groups you are a member of)\n\n'
         'It writes output to standard output, in JSON format. You should\n'
         'run it with output redirected to a file.\n\n'
         'For example:\n'
@@ -242,10 +232,14 @@ def main(argv):
                         help='Run quietly, without displaying the URLs used')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Print out each data chunk as it is read')
-    parser.add_argument('--raw', action='store_true',
+    parser.add_argument('--json', action='store_true',
                         help='Write out results in raw nested JSON form '
                              '(without any flattening, so not suitable for '
                              'using directly as an analytical dataframe)')
+    parser.add_argument('--csv', action='store_true',
+                        help='Write out results as a CSV file, '
+                             '(suitable for using directly as an '
+                             'analytical dataframe)')
     parser.add_argument('--identifiable', action='store_true',
                         help='Retain identifiable information about people')
     parser.add_argument('--firstname', action='store_true',
@@ -256,11 +250,13 @@ def main(argv):
     parser.add_argument('access_token', help='Meetup oauth2 access_token',
                         nargs='?')
     parser.add_argument('entity', nargs='?',
-                        help='One of: members, activity, events, attendance')
+                        help='One of: members, activity, past-events, '
+                             'future-events, attendance')
     parser.add_argument('params', nargs='*',
                         help='Parameter to filter by:\n'
                              '   for members:    the group name\n'
-                             '   for events:     the group name\n'
+                             '   for past-events:     the group name\n'
+                             '   for future-events:     the group name\n'
                              '   for attendance: the group name and event_id\n'
                              '   for activity:   not used, it just uses the '
                              'groups you are members of\n')
@@ -269,6 +265,11 @@ def main(argv):
     if flags.identifiable and flags.firstname:
         print('You cannot use both --identifiable and --firstname together',
               file=sys.stderr)
+        sys.exit(1)
+    if flags.json and flags.csv:
+        print('You cannot use both --json and --csv together',
+              file=sys.stderr)
+        sys.exit(1)
 
     if (flags.access_token is None or flags.entity is None
                                    or flags.entity == 'help'):
@@ -277,7 +278,7 @@ def main(argv):
         sys.exit(0)
 
     anon_level = 0 if flags.identifiable else 1 if flags.firstname else 2
-    debug_level = 0 if flags.quiet else 2 if flags.verbose else 0
+    debug_level = 0 if flags.quiet else 2 if flags.verbose else 1
     client = MeetupAPI(flags.access_token,
                        anon_level=anon_level,
                        debug_level=debug_level,
@@ -287,17 +288,96 @@ def main(argv):
         result = client.get_members(flags.params)
     elif flags.entity == 'activity':
         result = client.get_activity(flags.params)
-    elif flags.entity == 'events':
-        result = client.get_events(flags.params)
+    elif flags.entity == 'past-events':
+        result = client.get_events(flags.params, has_ended=True)
+    elif flags.entity == 'future-events':
+        result = client.get_events(flags.params, has_ended=False)
     elif flags.entity == 'attendance':
         result = client.get_attendance(flags.params)
     else:
         print('Error: unknown entity type %s' % flags.entity,
               file=sys.stderr)
         sys.exit(1)
-    if not flags.raw:
-        result = [client.flatten(r, True) for r in result]
-    print(json.dumps(result))
+
+    if not result:
+        # treat empty result as an error
+        print('Error: no data', file=sys.stderr)
+        sys.exit(1)
+
+    writer = DataWriter(sys.stdout, not flags.json)
+    writer.write(result)
+
+
+class DataWriter:
+    """
+    Writer for both CSV and JSON files.
+    """
+    def __init__(self, f, as_csv):
+        self.f = f
+        self.as_csv = as_csv
+
+    def write(self, result):
+        """
+        Write output to file
+        """
+        if self.as_csv:
+            result = [DataWriter.flatten(r, True) for r in result]
+            fieldnames = sorted(set.union(*[set(r.keys()) for r in result]))
+            writer = csv.DictWriter(self.f, fieldnames)
+            writer.writeheader()
+            for r in result:
+                writer.writerow(self.csv_values(r))
+        else:
+            print(json.dumps(result), file=self.f)
+
+    @staticmethod
+    def csv_values(r):
+        """
+        Convert values in a dictionary to types that are appropriate for
+        writing out to a CSV file.
+
+        The only type it needs to do anything with is the bool type, where
+        we don't want them to get written out as Python values - we want
+        something a bit more portable.
+        """
+        return {k: (CSVBoolean(v) if type(v) is bool else v)
+                for k, v in r.items()}
+
+    @staticmethod
+    def flatten(row, expand):
+        """
+        Convert from arbitrarily-nested data structure to a flattened
+        form, more suitable for using as an analytical dataframe.
+        """
+        result = OrderedDict()
+        for k, v in row.items():
+            if type(v) is dict:
+                for k2, v2 in v.items():
+                    result[k + '_' + k2] = v2
+            elif expand and type(v) in (list, tuple):
+                for i, item in enumerate(v):
+                    if type(item) is dict:
+                        for (k2, v2) in item.items():
+                            result[k + '_' + str(i) + '_' + k2] = v2
+                    else:
+                        result[k + '_' + str(i)] = item
+            else:
+                result[k] = v
+        return result
+
+
+class CSVBoolean:
+    """
+    A wrapper for booleans, so that they will get correctly written
+    out to CSV files.
+    """
+    def __init__(self, val):
+        self.val = val
+
+    def __str__(self):
+        return ('true' if self.val is True
+                else 'false' if self.val is False
+                else None)
 
 
 if __name__ == '__main__':
